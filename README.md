@@ -27,13 +27,13 @@ pip install -r requirements.txt
 ```bash
 python local_server.py
 ```
-This will start a Flask development server at `http://localhost:8000` with a test interface.
+This will start a Flask development server at `http://127.0.0.1:8000` with a test interface.
 
 ### Production Server
 ```bash
 uvicorn app.main:app --reload
 ```
-The API will be available at `http://localhost:8000`
+The API will be available at `http://127.0.0.1:8000`
 
 ## API Endpoints
 
@@ -68,7 +68,7 @@ Note: If no issues are found, the `issues` array will be empty and `status` will
 
 1. Using the Web Interface:
 - Start the local server: `python local_server.py`
-- Open `http://localhost:8000` in your browser
+- Open `http://127.0.0.1:8000` in your browser
 - Use the provided test interface to input HTML content
 - View color-coded results with detailed issue descriptions
 
@@ -82,7 +82,7 @@ python test_api.py
 curl -X POST \
   -H "Content-Type: application/json" \
   -d '{"content":"<p>Test content</p>"}' \
-  http://localhost:8000/api/index
+  http://127.0.0.1:8000/api/index
 ```
 
 ## Environment Variables
