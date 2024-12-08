@@ -27,18 +27,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class FlaggedContent(BaseModel):
-    type: str
-    severity: str
-    excerpt: str
-    explanation: str
-
-class ModerationResult(BaseModel):
-    is_appropriate: bool
-    confidence_score: float
-    flagged_content: List[FlaggedContent]
-    moderation_summary: str
-
 class ModerateRequest(BaseModel):
     content: str
 
@@ -67,14 +55,14 @@ class ContentModerator:
             logger.error(f"Error in HTML parsing: {str(e)}")
             raise ValueError(f"Error parsing HTML content: {str(e)}")
 
-    def _analyze_with_gpt4(self, text: str) -> ModerationResult:
+    def _analyze_with_gpt4(self, text: str) -> dict:
         if not text.strip():
-            return ModerationResult(
-                is_appropriate=True,
-                confidence_score=1.0,
-                flagged_content=[],
-                moderation_summary="Empty content provided."
-            )
+            return {
+                "is_appropriate": True,
+                "confidence_score": 1.0,
+                "flagged_content": [],
+                "moderation_summary": "Empty content provided."
+            }
 
         try:
             logger.info("Making API request to OpenAI...")
@@ -108,15 +96,18 @@ class ContentModerator:
             )
             logger.info("Received response from OpenAI")
             
-            result_dict = json.loads(response.choices[0].message.content)
-            result = ModerationResult(**result_dict)
+            result = json.loads(response.choices[0].message.content)
+            required_fields = ["is_appropriate", "confidence_score", "flagged_content", "moderation_summary"]
+            if not all(field in result for field in required_fields):
+                raise ValueError("Invalid response format from GPT-4")
+            
             logger.info("Successfully parsed GPT-4 response")
             return result
         except Exception as e:
             logger.error(f"Error in GPT-4 analysis: {str(e)}")
             raise Exception(f"Error analyzing content with GPT-4: {str(e)}")
 
-    def moderate_content(self, html_content: str) -> ModerationResult:
+    def moderate_content(self, html_content: str) -> dict:
         if not html_content:
             raise ValueError("HTML content cannot be empty")
         
@@ -300,7 +291,7 @@ async def serve_test_interface():
     return HTMLResponse(content=TEST_HTML, status_code=200)
 
 @app.post("/api/moderate")
-async def moderate_content(request: ModerateRequest) -> ModerationResult:
+async def moderate_content(request: ModerateRequest):
     """Content moderation endpoint"""
     try:
         # Log request information
@@ -317,7 +308,7 @@ async def moderate_content(request: ModerateRequest) -> ModerationResult:
         logger.info("Successfully processed moderation request")
         
         # Return result
-        return result
+        return JSONResponse(content=result)
     except Exception as e:
         # Log the full error
         logger.error(f"Error in moderation endpoint: {str(e)}")
@@ -329,7 +320,10 @@ async def moderate_content(request: ModerateRequest) -> ModerationResult:
             "type": type(e).__name__,
             "details": traceback.format_exc()
         }
-        raise HTTPException(status_code=500, detail=error_detail)
+        return JSONResponse(
+            status_code=500,
+            content=error_detail
+        )
 
 # Create handler for Vercel
-handler = Mangum(app)
+handler = Mangum(app, lifespan="off")
