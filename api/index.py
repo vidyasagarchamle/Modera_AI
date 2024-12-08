@@ -1,7 +1,6 @@
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse, HTMLResponse
 from pydantic import BaseModel
 from openai import OpenAI
 from bs4 import BeautifulSoup
@@ -10,7 +9,6 @@ import os
 import json
 import traceback
 import logging
-from pathlib import Path
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -136,18 +134,7 @@ TEST_HTML = """<!DOCTYPE html>
             const debugInfo = document.getElementById('debug');
             
             try {
-                // First, check API status
-                debugInfo.innerHTML = 'Checking API status...\\n';
-                const statusResponse = await fetch('/api/status');
-                const statusData = await statusResponse.json();
-                debugInfo.innerHTML += `API Status: ${JSON.stringify(statusData, null, 2)}\\n\\n`;
-                
-                if (statusData.openai_key_status !== "Valid") {
-                    throw new Error("OpenAI API key is not valid. Please check your configuration.");
-                }
-                
-                // Then send moderation request
-                debugInfo.innerHTML += 'Sending moderation request...\\n';
+                debugInfo.innerHTML = 'Sending request...\\n';
                 const response = await fetch('/api/moderate', {
                     method: 'POST',
                     headers: {
@@ -301,25 +288,6 @@ TEST_HTML = """<!DOCTYPE html>
 async def serve_test_interface():
     """Serve the test interface"""
     return HTMLResponse(content=TEST_HTML, status_code=200)
-
-@app.get("/api/status")
-async def api_status():
-    """API status endpoint"""
-    try:
-        api_key = os.getenv("OPENAI_API_KEY", "")
-        key_status = "Invalid" if not api_key.startswith("sk-") else "Valid"
-        return JSONResponse(content={
-            "status": "ok",
-            "message": "Modera API is running",
-            "openai_key_status": key_status,
-            "key_prefix": api_key[:4] if api_key else "None"
-        })
-    except Exception as e:
-        logger.error(f"Error in status endpoint: {str(e)}")
-        return JSONResponse(
-            status_code=500,
-            content={"error": str(e)}
-        )
 
 @app.post("/api/moderate")
 async def moderate_content(request: ModerateRequest):
