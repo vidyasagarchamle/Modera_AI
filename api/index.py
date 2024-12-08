@@ -1,11 +1,11 @@
-import os
-from mangum import Mangum
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from openai import OpenAI
 from bs4 import BeautifulSoup
+from mangum import Mangum
+import os
 import json
 import traceback
 import logging
@@ -122,23 +122,28 @@ class ContentModerator:
             logger.error(f"Error in content moderation: {str(e)}")
             raise
 
-@app.get("/")
+@app.get("/api")
 async def root():
+    """Root endpoint for API status check"""
     try:
         api_key = os.getenv("OPENAI_API_KEY", "")
         key_status = "Invalid" if not api_key.startswith("sk-") else "Valid"
-        return {
+        return JSONResponse(content={
+            "status": "ok",
             "message": "Modera API is running",
             "openai_key_status": key_status,
-            "key_prefix": api_key[:4] if api_key else "None",
-            "env_vars": {k: "set" if v else "not set" for k, v in os.environ.items() if "key" in k.lower()}
-        }
+            "key_prefix": api_key[:4] if api_key else "None"
+        })
     except Exception as e:
         logger.error(f"Error in root endpoint: {str(e)}")
-        return {"error": str(e)}
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
 
 @app.post("/api/moderate")
 async def moderate_content(request: ModerateRequest):
+    """Content moderation endpoint"""
     try:
         # Log request information
         logger.info(f"Received request with content length: {len(request.content)}")

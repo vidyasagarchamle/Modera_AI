@@ -11,9 +11,13 @@
             try {
                 // First, check API status
                 debugInfo.innerHTML = 'Checking API status...\n';
-                const statusResponse = await fetch('https://modera-git-main-vidyasagarchamles-projects.vercel.app/');
+                const statusResponse = await fetch('https://modera-git-main-vidyasagarchamles-projects.vercel.app/api');
                 const statusData = await statusResponse.json();
                 debugInfo.innerHTML += `API Status: ${JSON.stringify(statusData, null, 2)}\n\n`;
+                
+                if (statusData.openai_key_status !== "Valid") {
+                    throw new Error("OpenAI API key is not valid. Please check your configuration.");
+                }
                 
                 // Then send moderation request
                 debugInfo.innerHTML += 'Sending moderation request...\n';
@@ -27,8 +31,6 @@
                 });
                 
                 debugInfo.innerHTML += `Response status: ${response.status}\n`;
-                debugInfo.innerHTML += `Response headers: ${JSON.stringify(Object.fromEntries([...response.headers]), null, 2)}\n\n`;
-                
                 const responseData = await response.json();
                 debugInfo.innerHTML += `Raw response: ${JSON.stringify(responseData, null, 2)}\n\n`;
                 
@@ -58,7 +60,9 @@
             } catch (error) {
                 result.innerHTML = `<p style="color: red">Error: ${error.message}</p>`;
                 debugInfo.innerHTML += `Error caught: ${error.message}\n`;
-                debugInfo.innerHTML += `Error stack: ${error.stack}\n`;
+                if (error.stack) {
+                    debugInfo.innerHTML += `Error stack: ${error.stack}\n`;
+                }
             }
         }
 
