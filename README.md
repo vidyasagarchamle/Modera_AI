@@ -1,70 +1,92 @@
-# Modera API
+# Modera - Content Moderation API
 
-A content moderation API that analyzes HTML content using GPT-4 to check against predefined content moderation guidelines.
-
-## Features
-
-- HTML content analysis
-- Content moderation using GPT-4
-- Detects hate speech, explicit content, phishing, and spam
-- Severity-based issue categorization
-- RESTful API interface
+A FastAPI-based content moderation API that uses GPT-4 to analyze and moderate HTML content.
 
 ## Setup
 
-1. Clone the repository
-2. Create a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. Create a `.env` file in the root directory with your OpenAI API key:
-   ```
-   OPENAI_API_KEY=your_api_key_here
-   ```
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/modera.git
+cd modera
+```
+
+2. Create a virtual environment and install dependencies:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+3. Create a `.env` file:
+- Copy `.env.template` to `.env`
+- Add your OpenAI API key to the `.env` file
 
 ## Running the API
 
-Start the server:
+1. Start the FastAPI server:
 ```bash
 uvicorn app.main:app --reload
 ```
 
-The API will be available at `http://localhost:8000`
+2. The API will be available at `http://localhost:8000`
 
 ## API Endpoints
 
-### POST /api/v1/moderate
+### POST /api/moderate
 
-Analyzes HTML content for moderation issues.
+Moderates HTML content and returns a moderation result.
 
 **Request Body:**
 ```json
 {
-    "content": "<html>Your HTML content here</html>"
+    "content": "<p>Your HTML content here</p>"
 }
 ```
 
 **Response:**
 ```json
 {
-    "status": "flagged",
-    "issues": [
+    "is_appropriate": true,
+    "confidence_score": 0.95,
+    "flagged_content": [
         {
-            "type": "hate_speech",
-            "severity": "high",
-            "description": "Contains offensive language"
+            "type": "category of issue",
+            "severity": "low/medium/high",
+            "excerpt": "relevant text",
+            "explanation": "why this is an issue"
         }
-    ]
+    ],
+    "moderation_summary": "Brief explanation of the decision"
 }
 ```
 
-## API Documentation
+## Testing
 
-Once the server is running, visit:
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc` 
+1. Using Python:
+```bash
+python local_test.py
+```
+
+2. Using the HTML interface:
+- Open `test.html` in your browser
+- Enter HTML content in the textarea
+- Click "Test Moderation" to see results
+
+## Environment Variables
+
+- `OPENAI_API_KEY`: Your OpenAI API key (required)
+
+## Deployment
+
+The API is configured for deployment on Vercel. The `vercel.json` file contains the necessary configuration.
+
+## Notes
+
+- The API uses GPT-4 for content moderation
+- Make sure to keep your OpenAI API key secure and never commit it to version control
+- The API analyzes HTML content for:
+  - Hate speech
+  - Adult content
+  - Violence
+  - Harassment
+  - Spam/misleading information

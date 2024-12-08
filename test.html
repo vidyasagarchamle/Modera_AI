@@ -1,32 +1,82 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Test Article for Moderation</title>
+    <title>Content Moderation Test</title>
+    <script>
+        async function testModeration() {
+            const content = document.getElementById('content').value;
+            const result = document.getElementById('result');
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/moderate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ content: content })
+                });
+                
+                const data = await response.json();
+                result.innerHTML = `
+                    <h3>Moderation Result:</h3>
+                    <p>Is Appropriate: ${data.is_appropriate}</p>
+                    <p>Confidence Score: ${data.confidence_score}</p>
+                    <h4>Flagged Content:</h4>
+                    ${data.flagged_content.length ? 
+                        data.flagged_content.map(flag => `
+                            <div class="flag">
+                                <p>Type: ${flag.type}</p>
+                                <p>Severity: ${flag.severity}</p>
+                                <p>Excerpt: ${flag.excerpt}</p>
+                                <p>Explanation: ${flag.explanation}</p>
+                            </div>
+                        `).join('') : 
+                        '<p>No content flagged</p>'
+                    }
+                    <h4>Summary:</h4>
+                    <p>${data.moderation_summary}</p>
+                `;
+            } catch (error) {
+                result.innerHTML = `<p style="color: red">Error: ${error.message}</p>`;
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .flag {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+    </style>
 </head>
 <body>
-    <article>
-        <h1>Sample Article for Content Moderation</h1>
-        
-        <section>
-            <h2>Introduction</h2>
-            <p>This is a test article that contains various types of content to test the moderation system.</p>
-        </section>
-        
-        <section>
-            <h2>Main Content</h2>
-            <p>The article discusses sensitive topics like violence in video games and adult themes in modern media.</p>
-            <p>Some content might be inappropriate for younger audiences.</p>
-        </section>
-        
-        <section>
-            <h2>Comments Section</h2>
-            <div class="comment">
-                <p>User1: This content needs to be reviewed for inappropriate language.</p>
-            </div>
-            <div class="comment">
-                <p>User2: Please check this section for potential offensive material.</p>
-            </div>
-        </section>
-    </article>
+    <h1>Content Moderation Test</h1>
+    <textarea id="content" placeholder="Enter HTML content to moderate..."></textarea>
+    <br>
+    <button onclick="testModeration()">Test Moderation</button>
+    <div id="result"></div>
 </body>
 </html> 
