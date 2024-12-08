@@ -1,4 +1,4 @@
-import openai
+from openai import OpenAI
 from bs4 import BeautifulSoup
 from typing import Dict, Any
 import os
@@ -9,9 +9,10 @@ load_dotenv()
 
 class ContentModerator:
     def __init__(self):
-        openai.api_key = os.getenv("OPENAI_API_KEY")
-        if not openai.api_key:
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
             raise ValueError("OpenAI API key not found in environment variables")
+        self.client = OpenAI(api_key=api_key)
 
     def _extract_text_from_html(self, html_content: str) -> str:
         try:
@@ -30,7 +31,7 @@ class ContentModerator:
             }
 
         try:
-            response = openai.ChatCompletion.create(
+            response = self.client.chat.completions.create(
                 model="gpt-4",
                 messages=[
                     {"role": "system", "content": """You are a content moderator. Analyze the following content and identify any inappropriate or concerning content. Focus on:
