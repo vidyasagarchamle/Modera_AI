@@ -122,6 +122,7 @@ class ContentModerator:
             logger.error(f"Error in content moderation: {str(e)}")
             raise
 
+@app.get("/")
 @app.get("/api")
 async def root():
     """Root endpoint for API status check"""
@@ -177,4 +178,4 @@ async def moderate_content(request: ModerateRequest):
         )
 
 # Create handler for Vercel
-handler = Mangum(app, lifespan="off")
+handler = Mangum(app)
