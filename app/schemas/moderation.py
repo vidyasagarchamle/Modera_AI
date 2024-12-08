@@ -1,5 +1,5 @@
-from pydantic import BaseModel
 from typing import List, Literal
+from pydantic import BaseModel
 
 class ModerationIssue(BaseModel):
     type: str
@@ -11,4 +11,4 @@ class ModerationResponse(BaseModel):
     issues: List[ModerationIssue] = []
 
 class HTMLContent(BaseModel):
-    content: str 
+    content: str
