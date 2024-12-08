@@ -23,12 +23,17 @@ pip install -r requirements.txt
 
 ## Running the API
 
-1. Start the FastAPI server:
+### Local Development Server
+```bash
+python local_server.py
+```
+This will start a Flask development server at `http://localhost:8000` with a test interface.
+
+### Production Server
 ```bash
 uvicorn app.main:app --reload
 ```
-
-2. The API will be available at `http://localhost:8000`
+The API will be available at `http://localhost:8000`
 
 ## API Endpoints
 
@@ -43,34 +48,42 @@ Moderates HTML content and returns a moderation result.
 }
 ```
 
-**Response:**
+**Response Format:**
 ```json
 {
-    "is_appropriate": true,
-    "confidence_score": 0.95,
-    "flagged_content": [
+    "status": "flagged" or "good_to_go",
+    "issues": [
         {
-            "type": "category of issue",
+            "type": "hate_speech/adult_content/violence/harassment/spam",
             "severity": "low/medium/high",
-            "excerpt": "relevant text",
-            "explanation": "why this is an issue"
+            "description": "brief description of why this content is problematic"
         }
-    ],
-    "moderation_summary": "Brief explanation of the decision"
+    ]
 }
 ```
 
+Note: If no issues are found, the `issues` array will be empty and `status` will be "good_to_go".
+
 ## Testing
 
-1. Using Python:
+1. Using the Web Interface:
+- Start the local server: `python local_server.py`
+- Open `http://localhost:8000` in your browser
+- Use the provided test interface to input HTML content
+- View color-coded results with detailed issue descriptions
+
+2. Using Python Test Script:
 ```bash
-python local_test.py
+python test_api.py
 ```
 
-2. Using the HTML interface:
-- Open `test.html` in your browser
-- Enter HTML content in the textarea
-- Click "Test Moderation" to see results
+3. Using cURL:
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"content":"<p>Test content</p>"}' \
+  http://localhost:8000/api/index
+```
 
 ## Environment Variables
 
@@ -80,13 +93,22 @@ python local_test.py
 
 The API is configured for deployment on Vercel. The `vercel.json` file contains the necessary configuration.
 
-## Notes
+## Features
 
-- The API uses GPT-4 for content moderation
-- Make sure to keep your OpenAI API key secure and never commit it to version control
-- The API analyzes HTML content for:
+- Real-time HTML content moderation using GPT-4
+- Analysis of multiple content categories:
   - Hate speech
   - Adult content
   - Violence
   - Harassment
   - Spam/misleading information
+- Severity levels (low/medium/high) for each issue
+- User-friendly web interface for testing
+- Color-coded results for better visualization
+- Detailed descriptions of identified issues
+
+## Security Notes
+
+- Keep your OpenAI API key secure and never commit it to version control
+- Use environment variables for sensitive information
+- The development server is not suitable for production use
