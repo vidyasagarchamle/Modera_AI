@@ -1,4 +1,62 @@
 <!DOCTYPE html>
+<html>
+<head>
+    <title>Content Moderation Test</title>
+    <script>
+        async function testModeration() {
+            const content = document.getElementById('content').value;
+            const result = document.getElementById('result');
+            const debugInfo = document.getElementById('debug');
+            
+            try {
+                debugInfo.innerHTML = 'Sending request...';
+                const response = await fetch('/api/moderate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ content: content })
+                });
+                
+                debugInfo.innerHTML += '<br>Response received. Status: ' + response.status;
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    debugInfo.innerHTML += '<br>Error response: ' + errorText;
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                debugInfo.innerHTML += '<br>Response parsed successfully';
+                
+                result.innerHTML = `
+                    <h3>Moderation Result:</h3>
+                    <p>Is Appropriate: ${data.is_appropriate}</p>
+                    <p>Confidence Score: ${data.confidence_score}</p>
+                    <h4>Flagged Content:</h4>
+                    ${data.flagged_content.length ? 
+                        data.flagged_content.map(flag => `
+                            <div class="flag">
+                                <p>Type: ${flag.type}</p>
+                                <p>Severity: ${flag.severity}</p>
+                                <p>Excerpt: ${flag.excerpt}</p>
+                                <p>Explanation: ${flag.explanation}</p>
+                            </div>
+                        `).join('') : 
+                        '<p>No content flagged</p>'
+                    }
+                    <h4>Summary:</h4>
+                    <p>${data.moderation_summary}</p>
+                `;
+            } catch (error) {
+                result.innerHTML = `<p style="color: red">Error: ${error.message}</p>`;
+                debugInfo.innerHTML += '<br>Error caught: ' + error.message;
+            }
+        }
+
+        // Load example content when the page loads
+        window.onload = function() {
+            const exampleContent = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -24,5 +82,76 @@
         <p>Buy now! Limited offer!</p>
         <p>Buy now! Limited offer!</p>
     </div>
+</body>
+</html>`;
+            document.getElementById('content').value = exampleContent;
+        }
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 300px;
+            margin: 10px 0;
+            font-family: monospace;
+            padding: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .flag {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background-color: #fff8f8;
+        }
+        #debug {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        #result {
+            margin-top: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .instructions {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Content Moderation Test Interface</h1>
+    <div class="instructions">
+        <p>This interface allows you to test the content moderation API. Enter your HTML content in the textarea below and click "Test Moderation" to see the results.</p>
+        <p>The example content demonstrates various types of potentially inappropriate content for testing.</p>
+    </div>
+    <textarea id="content" placeholder="Enter HTML content to moderate..."></textarea>
+    <br>
+    <button onclick="testModeration()">Test Moderation</button>
+    <div id="debug"></div>
+    <div id="result"></div>
 </body>
 </html> 
