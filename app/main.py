@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from mangum import Mangum
 from app.api.routes import router
 
 app = FastAPI(
@@ -18,4 +19,7 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(router) 
+app.include_router(router)
+
+# Create handler for AWS Lambda
+handler = Mangum(app) 
