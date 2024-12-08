@@ -23,40 +23,45 @@ class ContentModerator:
     def _analyze_with_gpt4(self, text: str) -> Dict[str, Any]:
         if not text.strip():
             return {
-                "status": "good_to_go",
-                "issues": []
+                "is_appropriate": True,
+                "confidence_score": 1.0,
+                "flagged_content": [],
+                "moderation_summary": "Empty content provided."
             }
 
         try:
             response = openai.ChatCompletion.create(
                 model="gpt-4",
                 messages=[
-                    {"role": "system", "content": """You are a content moderator. Analyze the following content and identify any issues related to:
-                    1. Hate speech or offensive language
-                    2. Explicit material (nudity, explicit language)
-                    3. Phishing links or deceptive content
-                    4. Repetitive spam or irrelevant content
+                    {"role": "system", "content": """You are a content moderator. Analyze the following content and identify any inappropriate or concerning content. Focus on:
+                    1. Hate speech or discriminatory language
+                    2. Adult or explicit content
+                    3. Violence or graphic content
+                    4. Harassment or bullying
+                    5. Spam or misleading information
                     
-                    Return a JSON response with:
+                    Provide a response in this exact JSON format:
                     {
-                        "status": "flagged" or "good_to_go",
-                        "issues": [
+                        "is_appropriate": true/false,
+                        "confidence_score": 0.0-1.0,
+                        "flagged_content": [
                             {
-                                "type": "issue type",
+                                "type": "category of issue",
                                 "severity": "low/medium/high",
-                                "description": "brief description"
+                                "excerpt": "relevant text",
+                                "explanation": "why this is an issue"
                             }
-                        ]
-                    }
-                    
-                    If no issues are found, return status as "good_to_go" with an empty issues list."""},
+                        ],
+                        "moderation_summary": "brief explanation of the decision"
+                    }"""},
                     {"role": "user", "content": text}
                 ],
                 temperature=0.1
             )
             
-            result = json.loads(response['choices'][0]['message']['content'])
-            if "status" not in result or "issues" not in result:
+            result = json.loads(response.choices[0].message.content)
+            required_fields = ["is_appropriate", "confidence_score", "flagged_content", "moderation_summary"]
+            if not all(field in result for field in required_fields):
                 raise ValueError("Invalid response format from GPT-4")
                 
             return result
