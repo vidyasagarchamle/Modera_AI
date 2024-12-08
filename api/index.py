@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from app.core.moderator import ContentModerator
 import json
+import traceback
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -29,24 +30,39 @@ async def root():
 @app.post("/api/moderate")
 async def moderate_content(request: ModerateRequest):
     try:
+        # Print debug information
+        print("Received request with content length:", len(request.content))
+        print("OpenAI API Key status:", "Set" if os.getenv("OPENAI_API_KEY") else "Not set")
+        
         # Initialize moderator
         moderator = ContentModerator()
         
         # Process content
         result = moderator.moderate_content(request.content)
-        return result
+        
+        # Ensure result is JSON serializable
+        return JSONResponse(content=result)
     except Exception as e:
-        print(f"Error in moderation: {str(e)}")
+        error_detail = {
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }
+        print("Error in moderation:", error_detail)
         return JSONResponse(
             status_code=500,
-            content={"error": str(e)}
+            content=error_detail
         )
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    error_detail = {
+        "error": str(exc),
+        "traceback": traceback.format_exc()
+    }
+    print("Global exception:", error_detail)
     return JSONResponse(
         status_code=500,
-        content={"error": str(exc)}
+        content=error_detail
     )
 
 # Create handler for Vercel

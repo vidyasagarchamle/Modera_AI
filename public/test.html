@@ -1,82 +1,28 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Content Moderation Test</title>
-    <script>
-        async function testModeration() {
-            const content = document.getElementById('content').value;
-            const result = document.getElementById('result');
-            
-            try {
-                const response = await fetch('https://modera-git-main-vidyasagarchamles-projects.vercel.app/api/moderate', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ content: content })
-                });
-                
-                const data = await response.json();
-                result.innerHTML = `
-                    <h3>Moderation Result:</h3>
-                    <p>Is Appropriate: ${data.is_appropriate}</p>
-                    <p>Confidence Score: ${data.confidence_score}</p>
-                    <h4>Flagged Content:</h4>
-                    ${data.flagged_content.length ? 
-                        data.flagged_content.map(flag => `
-                            <div class="flag">
-                                <p>Type: ${flag.type}</p>
-                                <p>Severity: ${flag.severity}</p>
-                                <p>Excerpt: ${flag.excerpt}</p>
-                                <p>Explanation: ${flag.explanation}</p>
-                            </div>
-                        `).join('') : 
-                        '<p>No content flagged</p>'
-                    }
-                    <h4>Summary:</h4>
-                    <p>${data.moderation_summary}</p>
-                `;
-            } catch (error) {
-                result.innerHTML = `<p style="color: red">Error: ${error.message}</p>`;
-            }
-        }
-    </script>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        textarea {
-            width: 100%;
-            height: 200px;
-            margin: 10px 0;
-        }
-        button {
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        .flag {
-            border: 1px solid #ddd;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 5px;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Inappropriate Content</title>
 </head>
 <body>
-    <h1>Content Moderation Test</h1>
-    <textarea id="content" placeholder="Enter HTML content to moderate..."></textarea>
-    <br>
-    <button onclick="testModeration()">Test Moderation</button>
-    <div id="result"></div>
+    <h1>Welcome to Our Fake Website</h1>
+    <p>This website is designed to demonstrate inappropriate content detection.</p>
+    
+    <!-- Offensive Language -->
+    <p>Example of offensive language: "You're so stupid and useless."</p>
+    
+    <!-- Explicit Material -->
+    <p>Explicit description: "This image gallery contains adult-only content."</p>
+    
+    <!-- Phishing Link -->
+    <a href="http://fakebank-login.com">Login to your bank account</a>
+    
+    <!-- Spam Content -->
+    <div>
+        <p>Buy now! Limited offer!</p>
+        <p>Buy now! Limited offer!</p>
+        <p>Buy now! Limited offer!</p>
+    </div>
 </body>
 </html> 
