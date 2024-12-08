@@ -29,24 +29,28 @@ def moderate_content(html_content):
                 
                 Provide a response in this exact JSON format:
                 {
-                    "is_appropriate": true/false,
-                    "confidence_score": 0.0-1.0,
-                    "flagged_content": [
+                    "status": "flagged" or "good_to_go",
+                    "issues": [
                         {
-                            "type": "category of issue",
+                            "type": "hate_speech/adult_content/violence/harassment/spam",
                             "severity": "low/medium/high",
-                            "excerpt": "relevant text",
-                            "explanation": "why this is an issue"
+                            "description": "brief description of why this content is problematic"
                         }
-                    ],
-                    "moderation_summary": "brief explanation of the decision"
-                }"""},
+                    ]
+                }
+                
+                Notes:
+                - If content is appropriate, return status as "good_to_go" and empty issues array
+                - If content is inappropriate, return status as "flagged" and include all detected issues
+                - Be specific in descriptions but avoid repeating the problematic content
+                """},
                 {"role": "user", "content": text}
             ],
             temperature=0.1
         )
         
-        return json.loads(response.choices[0].message.content)
+        result = json.loads(response.choices[0].message.content)
+        return result
     except Exception as e:
         return {"error": str(e)}
 
