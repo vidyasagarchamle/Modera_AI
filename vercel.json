@@ -2,24 +2,25 @@
     "version": 2,
     "builds": [
         {
-            "src": "app/main.py",
+            "src": "api/index.py",
             "use": "@vercel/python"
+        },
+        {
+            "src": "public/**",
+            "use": "@vercel/static"
         }
     ],
     "routes": [
         {
+            "src": "/api/(.*)",
+            "dest": "api/index.py"
+        },
+        {
             "src": "/(.*)",
-            "dest": "app/main.py"
+            "dest": "public/$1"
         }
     ],
-    "functions": {
-        "app/main.py": {
-            "memory": 1024,
-            "maxDuration": 30
-        }
-    },
     "env": {
-        "PYTHONPATH": ".",
-        "OPENAI_API_VERSION": "2023-05-15"
+        "PYTHONPATH": "."
     }
 } 
