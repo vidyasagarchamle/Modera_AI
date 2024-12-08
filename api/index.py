@@ -50,48 +50,50 @@ def moderate_content(html_content):
     except Exception as e:
         return {"error": str(e)}
 
-class handler(BaseHTTPRequestHandler):
-    def _send_response(self, status_code, data):
-        self.send_response(status_code)
-        self.send_header('Content-type', 'application/json')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.end_headers()
-        self.wfile.write(json.dumps(data).encode())
+def handler(request):
+    if request.method == "OPTIONS":
+        # Handle CORS preflight request
+        headers = {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+        }
+        return {"statusCode": 204, "headers": headers}
 
-    def do_OPTIONS(self):
-        self.send_response(200)
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.end_headers()
-
-    def do_GET(self):
-        if self.path == "/":
-            # Serve the HTML interface
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            with open('test.html', 'r') as f:
-                self.wfile.write(f.read().encode())
-        else:
-            self._send_response(404, {"error": "Not found"})
-
-    def do_POST(self):
-        if self.path == "/api/moderate":
-            try:
-                content_length = int(self.headers.get('Content-Length', 0))
-                post_data = self.rfile.read(content_length)
-                request_data = json.loads(post_data.decode())
-                
-                if not request_data.get("content"):
-                    self._send_response(400, {"error": "No content provided"})
-                    return
-                
-                result = moderate_content(request_data["content"])
-                self._send_response(200, result)
-            except Exception as e:
-                self._send_response(500, {"error": str(e)})
-        else:
-            self._send_response(404, {"error": "Not found"})
+    if request.method == "POST":
+        try:
+            # Parse request body
+            body = json.loads(request.body)
+            
+            if not body.get("content"):
+                return {
+                    "statusCode": 400,
+                    "headers": {"Content-Type": "application/json"},
+                    "body": json.dumps({"error": "No content provided"})
+                }
+            
+            # Process content
+            result = moderate_content(body["content"])
+            
+            # Return response
+            return {
+                "statusCode": 200,
+                "headers": {
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*"
+                },
+                "body": json.dumps(result)
+            }
+        except Exception as e:
+            return {
+                "statusCode": 500,
+                "headers": {"Content-Type": "application/json"},
+                "body": json.dumps({"error": str(e)})
+            }
+    
+    # Handle unsupported methods
+    return {
+        "statusCode": 405,
+        "headers": {"Content-Type": "application/json"},
+        "body": json.dumps({"error": "Method not allowed"})
+    }
