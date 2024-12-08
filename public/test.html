@@ -10,10 +10,11 @@
             
             try {
                 debugInfo.innerHTML = 'Sending request...';
-                const response = await fetch('/api/moderate', {
+                const response = await fetch('https://modera-git-main-vidyasagarchamles-projects.vercel.app/api/moderate', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json'
                     },
                     body: JSON.stringify({ content: content })
                 });
@@ -21,9 +22,9 @@
                 debugInfo.innerHTML += '<br>Response received. Status: ' + response.status;
                 
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    debugInfo.innerHTML += '<br>Error response: ' + errorText;
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    const errorData = await response.json().catch(() => response.text());
+                    debugInfo.innerHTML += '<br>Error response: ' + JSON.stringify(errorData, null, 2);
+                    throw new Error(`HTTP error! status: ${response.status}, details: ${JSON.stringify(errorData)}`);
                 }
                 
                 const data = await response.json();
@@ -127,6 +128,7 @@
             border-radius: 5px;
             font-family: monospace;
             font-size: 14px;
+            white-space: pre-wrap;
         }
         #result {
             margin-top: 20px;

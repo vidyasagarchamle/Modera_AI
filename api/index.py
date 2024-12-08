@@ -1,12 +1,26 @@
 import os
+import sys
+from pathlib import Path
+
+# Add the root directory to Python path
+root_dir = str(Path(__file__).resolve().parent.parent)
+sys.path.append(root_dir)
+
 from mangum import Mangum
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from app.core.moderator import ContentModerator
 import json
 import traceback
+
+try:
+    from app.core.moderator import ContentModerator
+except ImportError as e:
+    print(f"Import Error: {str(e)}")
+    print(f"Python Path: {sys.path}")
+    print(f"Current Directory: {os.getcwd()}")
+    raise
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -25,7 +39,12 @@ class ModerateRequest(BaseModel):
 
 @app.get("/")
 async def root():
-    return {"message": "Modera API is running"}
+    return {
+        "message": "Modera API is running",
+        "python_path": sys.path,
+        "current_dir": os.getcwd(),
+        "env_vars": {k: "set" if v else "not set" for k, v in os.environ.items() if "key" in k.lower()}
+    }
 
 @app.post("/api/moderate")
 async def moderate_content(request: ModerateRequest):
@@ -33,6 +52,8 @@ async def moderate_content(request: ModerateRequest):
         # Print debug information
         print("Received request with content length:", len(request.content))
         print("OpenAI API Key status:", "Set" if os.getenv("OPENAI_API_KEY") else "Not set")
+        print("Current working directory:", os.getcwd())
+        print("Python path:", sys.path)
         
         # Initialize moderator
         moderator = ContentModerator()
@@ -45,7 +66,13 @@ async def moderate_content(request: ModerateRequest):
     except Exception as e:
         error_detail = {
             "error": str(e),
-            "traceback": traceback.format_exc()
+            "traceback": traceback.format_exc(),
+            "type": type(e).__name__,
+            "debug_info": {
+                "cwd": os.getcwd(),
+                "python_path": sys.path,
+                "env_vars": {k: "set" if v else "not set" for k, v in os.environ.items() if "key" in k.lower()}
+            }
         }
         print("Error in moderation:", error_detail)
         return JSONResponse(
@@ -57,7 +84,13 @@ async def moderate_content(request: ModerateRequest):
 async def global_exception_handler(request: Request, exc: Exception):
     error_detail = {
         "error": str(exc),
-        "traceback": traceback.format_exc()
+        "traceback": traceback.format_exc(),
+        "type": type(exc).__name__,
+        "debug_info": {
+            "cwd": os.getcwd(),
+            "python_path": sys.path,
+            "env_vars": {k: "set" if v else "not set" for k, v in os.environ.items() if "key" in k.lower()}
+        }
     }
     print("Global exception:", error_detail)
     return JSONResponse(
