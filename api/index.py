@@ -1,7 +1,8 @@
 import os
 from mangum import Mangum
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from app.core.moderator import ContentModerator
 import json
@@ -21,6 +22,10 @@ app.add_middleware(
 class ModerateRequest(BaseModel):
     content: str
 
+@app.get("/")
+async def root():
+    return {"message": "Modera API is running"}
+
 @app.post("/api/moderate")
 async def moderate_content(request: ModerateRequest):
     try:
@@ -32,10 +37,20 @@ async def moderate_content(request: ModerateRequest):
         return result
     except Exception as e:
         print(f"Error in moderation: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)}
+        )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=500,
+        content={"error": str(exc)}
+    )
 
 # Create handler for Vercel
-handler = Mangum(app)
+handler = Mangum(app, lifespan="off")
 
 # For local testing
 if __name__ == "__main__":
