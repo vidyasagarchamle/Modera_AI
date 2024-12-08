@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Content Moderation Test</title>
+    <style>
+        body { font-family: Arial; max-width: 800px; margin: 20px auto; padding: 0 20px; }
+        textarea { width: 100%; height: 200px; margin: 10px 0; }
+        .result { margin-top: 20px; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Content Moderation Test</h1>
+    <textarea id="content" placeholder="Enter HTML content to test..."></textarea>
+    <button onclick="testContent()">Test Content</button>
+    <div id="result" class="result"></div>
+
+    <script>
+        async function testContent() {
+            const content = document.getElementById('content').value;
+            const result = document.getElementById('result');
+            
+            try {
+                const response = await fetch('/api/moderate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    result.innerHTML = `
+                        <h3>Result:</h3>
+                        <p>Appropriate: ${data.is_appropriate}</p>
+                        <p>Confidence: ${data.confidence_score}</p>
+                        <h4>Flagged Content:</h4>
+                        ${data.flagged_content.map(flag => `
+                            <div>
+                                <p>Type: ${flag.type}</p>
+                                <p>Severity: ${flag.severity}</p>
+                                <p>Excerpt: ${flag.excerpt}</p>
+                                <p>Explanation: ${flag.explanation}</p>
+                            </div>
+                        `).join('')}
+                        <h4>Summary:</h4>
+                        <p>${data.moderation_summary}</p>
+                    `;
+                } else {
+                    result.innerHTML = `<p class="error">Error: ${data.error || 'Unknown error'}</p>`;
+                }
+            } catch (error) {
+                result.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+            }
+        }
+
+        // Add example content on load
+        window.onload = function() {
+            document.getElementById('content').value = `
+<h1>Test Content</h1>
+<p>This is a test with some inappropriate content:</p>
+<p>You're stupid and useless!</p>
+<p>This content is adults only.</p>
+<p>Click here to win $1,000,000!</p>
+            `.trim();
+        };
+    </script>
+</body>
+</html> 
