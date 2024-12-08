@@ -4,25 +4,12 @@
         {
             "src": "api/index.py",
             "use": "@vercel/python"
-        },
-        {
-            "src": "public/**",
-            "use": "@vercel/static"
         }
     ],
     "routes": [
         {
-            "src": "/api/(.*)",
-            "dest": "api/index.py"
-        },
-        {
             "src": "/(.*)",
-            "dest": "public/$1",
-            "check": true
+            "dest": "api/index.py"
         }
-    ],
-    "env": {
-        "PYTHONPATH": ".",
-        "APP_MODULE": "api.index:app"
-    }
+    ]
 } 

@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from openai import OpenAI
 from bs4 import BeautifulSoup
@@ -9,6 +10,7 @@ import os
 import json
 import traceback
 import logging
+from pathlib import Path
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -122,10 +124,187 @@ class ContentModerator:
             logger.error(f"Error in content moderation: {str(e)}")
             raise
 
+# HTML content for the test interface
+TEST_HTML = """<!DOCTYPE html>
+<html>
+<head>
+    <title>Content Moderation Test</title>
+    <script>
+        async function testModeration() {
+            const content = document.getElementById('content').value;
+            const result = document.getElementById('result');
+            const debugInfo = document.getElementById('debug');
+            
+            try {
+                // First, check API status
+                debugInfo.innerHTML = 'Checking API status...\\n';
+                const statusResponse = await fetch('/api/status');
+                const statusData = await statusResponse.json();
+                debugInfo.innerHTML += `API Status: ${JSON.stringify(statusData, null, 2)}\\n\\n`;
+                
+                if (statusData.openai_key_status !== "Valid") {
+                    throw new Error("OpenAI API key is not valid. Please check your configuration.");
+                }
+                
+                // Then send moderation request
+                debugInfo.innerHTML += 'Sending moderation request...\\n';
+                const response = await fetch('/api/moderate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ content: content })
+                });
+                
+                debugInfo.innerHTML += `Response status: ${response.status}\\n`;
+                const responseData = await response.json();
+                debugInfo.innerHTML += `Raw response: ${JSON.stringify(responseData, null, 2)}\\n\\n`;
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}, details: ${JSON.stringify(responseData)}`);
+                }
+                
+                result.innerHTML = `
+                    <h3>Moderation Result:</h3>
+                    <p>Is Appropriate: ${responseData.is_appropriate}</p>
+                    <p>Confidence Score: ${responseData.confidence_score}</p>
+                    <h4>Flagged Content:</h4>
+                    ${responseData.flagged_content.length ? 
+                        responseData.flagged_content.map(flag => `
+                            <div class="flag">
+                                <p>Type: ${flag.type}</p>
+                                <p>Severity: ${flag.severity}</p>
+                                <p>Excerpt: ${flag.excerpt}</p>
+                                <p>Explanation: ${flag.explanation}</p>
+                            </div>
+                        `).join('') : 
+                        '<p>No content flagged</p>'
+                    }
+                    <h4>Summary:</h4>
+                    <p>${responseData.moderation_summary}</p>
+                `;
+            } catch (error) {
+                result.innerHTML = `<p style="color: red">Error: ${error.message}</p>`;
+                debugInfo.innerHTML += `Error caught: ${error.message}\\n`;
+                if (error.stack) {
+                    debugInfo.innerHTML += `Error stack: ${error.stack}\\n`;
+                }
+            }
+        }
+
+        window.onload = function() {
+            const exampleContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Inappropriate Content</title>
+</head>
+<body>
+    <h1>Welcome to Our Fake Website</h1>
+    <p>This website is designed to demonstrate inappropriate content detection.</p>
+    
+    <!-- Offensive Language -->
+    <p>Example of offensive language: "You're so stupid and useless."</p>
+    
+    <!-- Explicit Material -->
+    <p>Explicit description: "This image gallery contains adult-only content."</p>
+    
+    <!-- Phishing Link -->
+    <a href="http://fakebank-login.com">Login to your bank account</a>
+    
+    <!-- Spam Content -->
+    <div>
+        <p>Buy now! Limited offer!</p>
+        <p>Buy now! Limited offer!</p>
+        <p>Buy now! Limited offer!</p>
+    </div>
+</body>
+</html>`;
+            document.getElementById('content').value = exampleContent;
+        }
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        textarea {
+            width: 100%;
+            height: 300px;
+            margin: 10px 0;
+            font-family: monospace;
+            padding: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .flag {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background-color: #fff8f8;
+        }
+        #debug {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
+        }
+        #result {
+            margin-top: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .instructions {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Content Moderation Test Interface</h1>
+    <div class="instructions">
+        <p>This interface allows you to test the content moderation API. Enter your HTML content in the textarea below and click "Test Moderation" to see the results.</p>
+        <p>The example content demonstrates various types of potentially inappropriate content for testing.</p>
+    </div>
+    <textarea id="content" placeholder="Enter HTML content to moderate..."></textarea>
+    <br>
+    <button onclick="testModeration()">Test Moderation</button>
+    <div id="debug"></div>
+    <div id="result"></div>
+</body>
+</html>
+"""
+
 @app.get("/")
-@app.get("/api")
-async def root():
-    """Root endpoint for API status check"""
+async def serve_test_interface():
+    """Serve the test interface"""
+    return HTMLResponse(content=TEST_HTML, status_code=200)
+
+@app.get("/api/status")
+async def api_status():
+    """API status endpoint"""
     try:
         api_key = os.getenv("OPENAI_API_KEY", "")
         key_status = "Invalid" if not api_key.startswith("sk-") else "Valid"
@@ -136,7 +315,7 @@ async def root():
             "key_prefix": api_key[:4] if api_key else "None"
         })
     except Exception as e:
-        logger.error(f"Error in root endpoint: {str(e)}")
+        logger.error(f"Error in status endpoint: {str(e)}")
         return JSONResponse(
             status_code=500,
             content={"error": str(e)}
