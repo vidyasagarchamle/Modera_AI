@@ -41,7 +41,7 @@
             result.innerHTML = '<p class="loading">Processing...</p>';
             
             try {
-                const response = await fetch('/api/index', {
+                const response = await fetch('http://127.0.0.1:8000/api/index', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ content })
