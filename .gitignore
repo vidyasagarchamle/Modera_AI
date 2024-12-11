@@ -20,12 +20,14 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-venv/
 
 # Virtual Environment
 venv/
 env/
 ENV/
+.venv/
+.env/
+.ENV/
 
 # Environment variables
 .env
@@ -38,4 +40,18 @@ ENV/
 
 # OS
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# Python virtual environment
+venv
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log

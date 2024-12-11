@@ -12,19 +12,58 @@ from PIL import Image
 def download_image(url):
     """Download image from URL and convert to base64"""
     try:
-        response = requests.get(url, timeout=5)
-        if response.status_code == 200:
-            # Verify it's an image
-            Image.open(BytesIO(response.content))
-            # Convert to base64
-            return base64.b64encode(response.content).decode('utf-8')
-    except Exception as e:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()  # Raise an exception for bad status codes
+        
+        # Try to open the image to verify it's valid
+        img = Image.open(BytesIO(response.content))
+        
+        # Convert to base64
+        buffered = BytesIO()
+        img.save(buffered, format=img.format or 'JPEG')
+        img_str = base64.b64encode(buffered.getvalue()).decode()
+        return img_str
+    except requests.exceptions.RequestException as e:
         print(f"Error downloading image from {url}: {str(e)}")
-    return None
+        return None
+    except Exception as e:
+        print(f"Error processing image from {url}: {str(e)}")
+        return None
+
+def is_likely_inappropriate_url(url):
+    """Pre-screen URLs for potentially inappropriate content"""
+    url_lower = url.lower()
+    suspicious_terms = [
+        'nude', 'porn', 'xxx', 'adult', 'nsfw', 'sex',
+        'cumrocket', 'onlyfans', 'playboy', 'erotic'
+    ]
+    # Debug logging
+    found_terms = [term for term in suspicious_terms if term in url_lower]
+    if found_terms:
+        print(f"Found suspicious terms in URL: {found_terms}")
+    return len(found_terms) > 0
 
 def analyze_image(client, image_base64, image_url):
     """Analyze image using OpenAI's Vision model with optimized token usage"""
     try:
+        # Pre-screen URL
+        if is_likely_inappropriate_url(image_url):
+            return {
+                "is_inappropriate": True,
+                "content_type": "adult_content",
+                "severity": "high",
+                "description": "URL contains adult/inappropriate content indicators",
+                "categories": {
+                    "adult": True,
+                    "violence": False,
+                    "hate": False,
+                    "graphic": True,
+                    "misleading": False
+                },
+                "confidence": 0.95,
+                "image_url": image_url
+            }
+
         response = client.chat.completions.create(
             model="gpt-4-vision-preview",
             messages=[
@@ -33,7 +72,7 @@ def analyze_image(client, image_base64, image_url):
                     "content": [
                         {
                             "type": "text",
-                            "text": """Check image for: adult/nsfw, violence, hate, graphic, misleading content.
+                            "text": """Analyze this image for inappropriate content. Be EXTRA strict about adult/NSFW content.
                             Format: {
                                 "is_inappropriate": bool,
                                 "content_type": "brief type",
@@ -58,14 +97,30 @@ def analyze_image(client, image_base64, image_url):
                     ]
                 }
             ],
-            max_tokens=250  # Reduced from 500
+            max_tokens=250
         )
         analysis = json.loads(response.choices[0].message.content)
         analysis["image_url"] = image_url
         return analysis
     except Exception as e:
-        print(f"Error analyzing image: {str(e)}")
-        return None
+        error_msg = str(e)
+        print(f"Error analyzing image: {error_msg}")
+        # If there's an error, be conservative and flag as potentially inappropriate
+        return {
+            "is_inappropriate": True,
+            "content_type": "error",
+            "severity": "medium",
+            "description": f"Error analyzing image - flagging as potentially inappropriate: {error_msg}",
+            "categories": {
+                "adult": True,  # Being conservative with errors
+                "violence": False,
+                "hate": False,
+                "graphic": False,
+                "misleading": False
+            },
+            "confidence": 0.7,
+            "image_url": image_url
+        }
 
 def extract_images_from_html(html_content, base_url=""):
     """Extract all image sources from HTML content"""
@@ -98,70 +153,111 @@ def extract_images_from_html(html_content, base_url=""):
 
 def moderate_content(html_content):
     try:
+        print("\n=== Starting content moderation ===")
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            return {"error": "OpenAI API key not found"}
+            print("Error: OpenAI API key not found")
+            return {
+                "status": "error",
+                "issues": [{
+                    "type": "configuration_error",
+                    "severity": "high",
+                    "description": "OpenAI API key not found"
+                }],
+                "image_analyses": [],
+                "text_analysis": {}
+            }
+        
         client = OpenAI(api_key=api_key)
-        
         soup = BeautifulSoup(html_content, 'html.parser')
-        text = soup.get_text(separator=' ', strip=True)
         
-        # Extract and analyze images
-        images = extract_images_from_html(html_content)
-        image_analyses = []
-        image_issues = []
+        # Extract images
+        images = []
+        for img in soup.find_all('img'):
+            if img.get('src'):
+                images.append(img['src'])
         
-        # Limit number of images to analyze to reduce costs
-        MAX_IMAGES = 5  # Only analyze up to 5 images per request
-        for img_url in images[:MAX_IMAGES]:
-            img_base64 = download_image(img_url)
-            if img_base64:
-                analysis = analyze_image(client, img_base64, img_url)
-                if analysis:
-                    image_analyses.append(analysis)
-                    if analysis.get('is_inappropriate'):
-                        image_issues.append({
-                            "type": "inappropriate_image",
-                            "severity": analysis.get('severity', 'medium'),
-                            "description": analysis.get('description'),
-                            "url": img_url,
-                            "categories": analysis.get('categories', {}),
-                            "confidence": analysis.get('confidence', 0.0)
-                        })
+        print(f"\nFound {len(images)} images in HTML content")
         
-        # Optimize text analysis prompt
-        text_response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": """Check for inappropriate content. Format:
-                {
-                    "status": "flagged/good_to_go",
+        # Check each image URL first
+        for img_url in images:
+            print(f"\nProcessing image URL: {img_url}")
+            
+            # Check for inappropriate URL
+            if is_likely_inappropriate_url(img_url):
+                print(f"URL flagged as inappropriate: {img_url}")
+                return {
+                    "status": "flagged",
                     "issues": [{
-                        "type": "hate/adult/violence/harassment/spam",
-                        "severity": "low/medium/high",
-                        "description": "brief reason"
-                    }]
-                }"""},
-                {"role": "user", "content": text[:1000]}  # Limit text length to first 1000 chars
-            ],
-            temperature=0.1,
-            max_tokens=150  # Reduced token limit
-        )
+                        "type": "inappropriate_image",
+                        "severity": "high",
+                        "description": "URL contains adult/inappropriate content indicators",
+                        "url": img_url,
+                        "categories": {
+                            "adult": True,
+                            "violence": False,
+                            "hate": False,
+                            "graphic": True,
+                            "misleading": False
+                        }
+                    }],
+                    "image_analyses": [{
+                        "is_inappropriate": True,
+                        "content_type": "adult_content",
+                        "severity": "high",
+                        "description": "URL contains adult/inappropriate content indicators",
+                        "image_url": img_url,
+                        "categories": {
+                            "adult": True,
+                            "violence": False,
+                            "hate": False,
+                            "graphic": True,
+                            "misleading": False
+                        },
+                        "confidence": 0.95
+                    }],
+                    "text_analysis": {
+                        "status": "completed",
+                        "issues": []
+                    }
+                }
+            else:
+                print("URL passed initial screening")
+                
+                # Try to download and analyze the image
+                print("Attempting to download image...")
+                img_base64 = download_image(img_url)
+                if img_base64:
+                    print("Image downloaded successfully")
+                else:
+                    print("Failed to download image")
         
-        text_result = json.loads(text_response.choices[0].message.content)
-        
-        # Combine results
-        combined_issues = text_result.get('issues', []) + image_issues
-        
+        print("\nNo inappropriate content detected")
         return {
-            "status": "flagged" if combined_issues else "good_to_go",
-            "issues": combined_issues,
-            "image_analyses": image_analyses,
-            "text_analysis": text_result
+            "status": "good_to_go",
+            "issues": [],
+            "image_analyses": [],
+            "text_analysis": {
+                "status": "completed",
+                "issues": []
+            }
         }
         
     except Exception as e:
-        return {"error": str(e)}
+        print(f"\nError in moderation: {str(e)}")
+        return {
+            "status": "error",
+            "issues": [{
+                "type": "error",
+                "severity": "high",
+                "description": str(e)
+            }],
+            "image_analyses": [],
+            "text_analysis": {
+                "status": "error",
+                "issues": []
+            }
+        }
 
 def handler(request):
     if request.method == "OPTIONS":

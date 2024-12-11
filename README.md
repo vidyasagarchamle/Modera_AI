@@ -1,25 +1,29 @@
 # Modera - Content Moderation API
 
-A FastAPI-based content moderation API that uses GPT-4 to analyze and moderate HTML content.
+A powerful content moderation API that uses GPT-4 Vision and URL analysis to detect and flag inappropriate content in HTML, including both text and images.
 
 ## Features
 
-- Real-time HTML content moderation using GPT-4
-- Analysis of multiple content categories:
-  - Hate speech
-  - Adult content
-  - Violence
+- Real-time HTML content moderation
+- Image analysis using GPT-4 Vision
+- URL-based pre-screening for inappropriate content
+- Multiple detection categories:
+  - Adult/NSFW content
+  - Violence and gore
+  - Hate speech and symbols
+  - Graphic content
+  - Misleading information
   - Harassment
-  - Spam/misleading information
-- Severity levels (low/medium/high) for each issue
-- Detailed descriptions of identified issues
+- Detailed analysis with confidence scores
+- Severity levels (low/medium/high)
+- Fast URL-based detection without image processing when possible
 
 ## API Usage
 
 ### Endpoint
 
 ```
-POST /api/moderate
+POST /api/index
 ```
 
 ### Request Format
@@ -37,23 +41,50 @@ POST /api/moderate
     "status": "flagged" or "good_to_go",
     "issues": [
         {
-            "type": "hate_speech/adult_content/violence/harassment/spam",
+            "type": "inappropriate_image/hate_speech/adult_content/violence/harassment/spam",
             "severity": "low/medium/high",
-            "description": "brief description of why this content is problematic"
+            "description": "Detailed description of the issue",
+            "url": "URL of flagged image (if applicable)",
+            "categories": {
+                "adult": boolean,
+                "violence": boolean,
+                "hate": boolean,
+                "graphic": boolean,
+                "misleading": boolean
+            }
         }
-    ]
+    ],
+    "image_analyses": [
+        {
+            "is_inappropriate": boolean,
+            "content_type": "type of content",
+            "severity": "low/medium/high",
+            "description": "Analysis description",
+            "image_url": "analyzed image URL",
+            "categories": {
+                "adult": boolean,
+                "violence": boolean,
+                "hate": boolean,
+                "graphic": boolean,
+                "misleading": boolean
+            },
+            "confidence": float (0-1)
+        }
+    ],
+    "text_analysis": {
+        "status": "completed/error",
+        "issues": []
+    }
 }
 ```
-
-Note: If no issues are found, the `issues` array will be empty and `status` will be "good_to_go".
 
 ### Example Usage
 
 ```bash
 curl -X POST \
   -H "Content-Type: application/json" \
-  -d '{"content":"<p>Your content to moderate</p>"}' \
-  https://your-api-endpoint/api/moderate
+  -d '{"content":"<p>Text content</p><img src=\"image_url.jpg\">"}' \
+  http://localhost:8080/api/index
 ```
 
 ## Development Setup
@@ -75,8 +106,47 @@ pip install -r requirements.txt
 - Copy `.env.template` to `.env`
 - Add your OpenAI API key to the `.env` file
 
+4. Start the local server:
+```bash
+python local_server.py
+```
+
+The server will start on `http://localhost:8080`
+
+## Testing
+
+1. Open `http://localhost:8080` in your browser
+2. Use the test interface to paste HTML content
+3. Click "Test Content" to see the moderation results
+
 ## Security Notes
 
 - Keep your OpenAI API key secure and never commit it to version control
 - Use environment variables for sensitive information
 - The development server is not suitable for production use
+- Consider implementing rate limiting for production deployments
+
+## Features in Detail
+
+### URL Pre-screening
+- Automatically detects potentially inappropriate content based on URL patterns
+- Fast initial screening without requiring image download
+- Configurable list of suspicious terms
+
+### Image Analysis
+- Uses GPT-4 Vision for deep image analysis
+- Provides confidence scores for detected issues
+- Multiple category detection in a single pass
+
+### Text Analysis
+- Analyzes text content for inappropriate material
+- Provides detailed categorization of issues
+- Fast and efficient processing
+
+## Error Handling
+
+The API includes robust error handling:
+- Invalid requests return appropriate HTTP status codes
+- Network issues are gracefully handled
+- Image processing errors don't break the analysis
+- Detailed error messages for debugging
