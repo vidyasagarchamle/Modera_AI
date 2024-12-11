@@ -25,6 +25,45 @@
         .issue.high { border-left: 4px solid #cc0000; }
         .issue.medium { border-left: 4px solid #ff9900; }
         .issue.low { border-left: 4px solid #ffcc00; }
+        .image-preview {
+            max-width: 200px;
+            margin: 10px 0;
+        }
+        .image-analysis {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .categories {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .category {
+            padding: 5px 10px;
+            border-radius: 3px;
+            text-align: center;
+        }
+        .category.true {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .category.false {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        .confidence {
+            height: 4px;
+            background-color: #eee;
+            margin: 5px 0;
+        }
+        .confidence-bar {
+            height: 100%;
+            background-color: #4caf50;
+            transition: width 0.3s ease;
+        }
     </style>
 </head>
 <body>
@@ -41,9 +80,12 @@
             result.innerHTML = '<p class="loading">Processing...</p>';
             
             try {
-                const response = await fetch('http://127.0.0.1:8000/api/index', {
+                const response = await fetch('/api/index', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
                     body: JSON.stringify({ content })
                 });
                 
@@ -51,21 +93,54 @@
                 
                 if (response.ok) {
                     const statusClass = data.status === 'flagged' ? 'flagged' : 'good';
-                    result.innerHTML = `
+                    let html = `
                         <div class="status ${statusClass}">
                             Status: ${data.status === 'flagged' ? 'Content Flagged' : 'Content Approved'}
-                        </div>
-                        ${data.status === 'flagged' ? `
-                            <h3>Issues Found:</h3>
-                            ${data.issues.map(issue => `
+                        </div>`;
+
+                    // Display text analysis issues
+                    if (data.text_analysis && data.text_analysis.issues && data.text_analysis.issues.length > 0) {
+                        html += `
+                            <h3>Text Issues Found:</h3>
+                            ${data.text_analysis.issues.map(issue => `
                                 <div class="issue ${issue.severity}">
                                     <p><strong>Type:</strong> ${issue.type}</p>
                                     <p><strong>Severity:</strong> ${issue.severity}</p>
                                     <p><strong>Description:</strong> ${issue.description}</p>
                                 </div>
-                            `).join('')}
-                        ` : '<p>No issues found with this content.</p>'}
-                    `;
+                            `).join('')}`;
+                    }
+
+                    // Display image analyses
+                    if (data.image_analyses && data.image_analyses.length > 0) {
+                        html += `<h3>Image Analyses:</h3>`;
+                        data.image_analyses.forEach(analysis => {
+                            html += `
+                                <div class="image-analysis">
+                                    <img src="${analysis.image_url}" class="image-preview" alt="Analyzed image">
+                                    <p><strong>Content Type:</strong> ${analysis.content_type}</p>
+                                    <p><strong>Severity:</strong> ${analysis.severity}</p>
+                                    <p><strong>Description:</strong> ${analysis.description}</p>
+                                    
+                                    <h4>Categories:</h4>
+                                    <div class="categories">
+                                        ${Object.entries(analysis.categories).map(([category, value]) => `
+                                            <div class="category ${value}">
+                                                ${category.replace('_', ' ')}: ${value ? 'Yes' : 'No'}
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                    
+                                    <p><strong>Confidence Score:</strong></p>
+                                    <div class="confidence">
+                                        <div class="confidence-bar" style="width: ${analysis.confidence_score * 100}%"></div>
+                                    </div>
+                                    <p style="text-align: right">${(analysis.confidence_score * 100).toFixed(1)}%</p>
+                                </div>`;
+                        });
+                    }
+
+                    result.innerHTML = html;
                 } else {
                     result.innerHTML = `<p class="error">Error: ${data.error || 'Unknown error'}</p>`;
                 }
@@ -83,6 +158,10 @@
 <p>You're stupid and useless!</p>
 <p>This content is adults only.</p>
 <p>Click here to win $1,000,000!</p>
+<img src="https://example.com/test-image.jpg" alt="Test image">
+<div style="background-image: url('https://example.com/background.jpg')">
+    Background image test
+</div>
             `.trim();
         };
     </script>
