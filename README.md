@@ -14,6 +14,11 @@ A powerful content moderation API that uses GPT-4 Vision and URL analysis to det
   - Graphic content
   - Misleading information
   - Harassment
+  - Illegal substances and drug-related content:
+    - Marijuana/Cannabis
+    - Illicit drugs
+    - Drug paraphernalia
+    - Drug-related terminology
 - Detailed analysis with confidence scores
 - Severity levels (low/medium/high)
 - Fast URL-based detection without image processing when possible
@@ -41,7 +46,7 @@ POST /api/index
     "status": "flagged" or "good_to_go",
     "issues": [
         {
-            "type": "inappropriate_image/hate_speech/adult_content/violence/harassment/spam",
+            "type": "inappropriate_image/hate_speech/adult_content/violence/harassment/spam/drug_content",
             "severity": "low/medium/high",
             "description": "Detailed description of the issue",
             "url": "URL of flagged image (if applicable)",
@@ -50,7 +55,8 @@ POST /api/index
                 "violence": boolean,
                 "hate": boolean,
                 "graphic": boolean,
-                "misleading": boolean
+                "misleading": boolean,
+                "drugs": boolean
             }
         }
     ],
@@ -66,7 +72,8 @@ POST /api/index
                 "violence": boolean,
                 "hate": boolean,
                 "graphic": boolean,
-                "misleading": boolean
+                "misleading": boolean,
+                "drugs": boolean
             },
             "confidence": float (0-1)
         }

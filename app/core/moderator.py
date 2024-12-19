@@ -59,6 +59,7 @@ class ContentModerator:
                     3. Violence or graphic content
                     4. Harassment or bullying
                     5. Spam or misleading information
+                    6. Illegal content and activities
                     
                     Provide a response in this exact JSON format:
                     {

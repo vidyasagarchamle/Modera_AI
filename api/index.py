@@ -35,7 +35,10 @@ def is_likely_inappropriate_url(url):
     url_lower = url.lower()
     suspicious_terms = [
         'nude', 'porn', 'xxx', 'adult', 'nsfw', 'sex',
-        'cumrocket', 'onlyfans', 'playboy', 'erotic'
+        'cumrocket', 'onlyfans', 'playboy', 'erotic',
+        'marijuana', 'cannabis', 'weed', 'cocaine', 'heroin',
+        'meth', 'drug', 'mdma', 'ecstasy', 'lsd', 'shroom',
+        'psychedelic', 'hemp', 'thc', 'cbd', 'dispensary'
     ]
     # Debug logging
     found_terms = [term for term in suspicious_terms if term in url_lower]
